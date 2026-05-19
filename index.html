@@ -4,395 +4,437 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Snow Transceiver — Web Flasher</title>
-  <meta name="description" content="Flash the Snow Transceiver firmware to your ESP32 directly from your browser. No drivers, no IDE." />
+  <meta name="description" content="Flash TX, RX Full, or RX Lite firmware to your ESP32 directly from your browser." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E%E2%9D%84%EF%B8%8F%3C/text%3E%3C/svg%3E" />
-
-  <script
-    type="module"
-    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"
-  ></script>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
   <style>
+    /* ── Tokens ───────────────────────────────────────────────────────────── */
     :root {
-      --bg: #ffffff;
-      --surface: #f8fafc;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: #e2e8f0;
-      --accent: #2563eb;
-      --accent-hover: #1d4ed8;
-      --accent-fg: #ffffff;
-      --warn-bg: #fef3c7;
+      --bg:          #ffffff;
+      --surface:     #f8fafc;
+      --surface2:    #f1f5f9;
+      --text:        #0f172a;
+      --muted:       #64748b;
+      --border:      #e2e8f0;
+      --accent:      #2563eb;
+      --accent-dim:  #dbeafe;
+      --accent-fg:   #ffffff;
+      --green:       #16a34a;
+      --green-dim:   #dcfce7;
+      --orange:      #ea580c;
+      --orange-dim:  #ffedd5;
+      --warn-bg:     #fef3c7;
       --warn-border: #fde68a;
-      --warn-text: #78350f;
-      --code-bg: #f1f5f9;
-      --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
+      --warn-text:   #78350f;
+      --code-bg:     #f1f5f9;
+      --shadow-sm:   0 1px 2px rgba(15,23,42,.05);
+      --shadow:      0 1px 3px rgba(15,23,42,.06), 0 4px 20px rgba(15,23,42,.06);
+      --radius:      14px;
     }
-
     [data-theme="dark"] {
-      --bg: #0a0f1c;
-      --surface: #111827;
-      --text: #f1f5f9;
-      --muted: #94a3b8;
-      --border: #1e293b;
-      --accent: #60a5fa;
-      --accent-hover: #93c5fd;
-      --accent-fg: #0a0f1c;
-      --warn-bg: #422006;
+      --bg:          #080e1a;
+      --surface:     #0f172a;
+      --surface2:    #1e293b;
+      --text:        #f1f5f9;
+      --muted:       #94a3b8;
+      --border:      #1e293b;
+      --accent:      #60a5fa;
+      --accent-dim:  #1e3a5f;
+      --accent-fg:   #080e1a;
+      --green:       #4ade80;
+      --green-dim:   #14532d;
+      --orange:      #fb923c;
+      --orange-dim:  #431407;
+      --warn-bg:     #422006;
       --warn-border: #78350f;
-      --warn-text: #fde68a;
-      --code-bg: #111827;
-      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+      --warn-text:   #fde68a;
+      --code-bg:     #0f172a;
+      --shadow-sm:   0 1px 2px rgba(0,0,0,.4);
+      --shadow:      0 1px 3px rgba(0,0,0,.4), 0 4px 20px rgba(0,0,0,.3);
     }
-
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
-        --bg: #0a0f1c;
-        --surface: #111827;
-        --text: #f1f5f9;
-        --muted: #94a3b8;
-        --border: #1e293b;
-        --accent: #60a5fa;
-        --accent-hover: #93c5fd;
-        --accent-fg: #0a0f1c;
-        --warn-bg: #422006;
-        --warn-border: #78350f;
-        --warn-text: #fde68a;
-        --code-bg: #111827;
-        --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+        --bg:#080e1a; --surface:#0f172a; --surface2:#1e293b;
+        --text:#f1f5f9; --muted:#94a3b8; --border:#1e293b;
+        --accent:#60a5fa; --accent-dim:#1e3a5f; --accent-fg:#080e1a;
+        --green:#4ade80; --green-dim:#14532d;
+        --orange:#fb923c; --orange-dim:#431407;
+        --warn-bg:#422006; --warn-border:#78350f; --warn-text:#fde68a;
+        --code-bg:#0f172a;
+        --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+        --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 20px rgba(0,0,0,.3);
       }
     }
 
-    * { box-sizing: border-box; }
-
+    /* ── Reset / base ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
     html, body {
-      margin: 0;
-      padding: 0;
-      background: var(--bg);
-      color: var(--text);
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                    "Helvetica Neue", Arial, sans-serif;
-      font-size: 16px;
-      line-height: 1.55;
+      font-size: 16px; line-height: 1.55;
       -webkit-font-smoothing: antialiased;
-      transition: background 0.2s ease, color 0.2s ease;
+      transition: background .2s, color .2s;
     }
 
-    .container {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 32px 24px 80px;
-    }
+    /* ── Layout ───────────────────────────────────────────────────────────── */
+    .wrap { max-width: 900px; margin: 0 auto; padding: 32px 24px 80px; }
 
+    /* ── Header ───────────────────────────────────────────────────────────── */
     header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 48px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px;
+             font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
+    .brand-mark {
+      width: 28px; height: 28px; display: grid; place-items: center;
+      background: var(--accent); color: var(--accent-fg);
+      border-radius: 7px; font-size: 14px;
+    }
+    .theme-btn {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text); padding: 6px 12px; border-radius: 8px;
+      cursor: pointer; font-size: 13px; font-family: inherit;
+      transition: background .15s;
+    }
+    .theme-btn:hover { background: var(--surface2); }
+
+    /* ── Hero ─────────────────────────────────────────────────────────────── */
+    h1 {
+      font-size: clamp(28px, 5vw, 38px); line-height: 1.15;
+      letter-spacing: -.03em; margin: 0 0 12px; font-weight: 800;
+    }
+    .tagline { font-size: 17px; color: var(--muted); margin: 0 0 40px; }
+
+    /* ── Browser warning ──────────────────────────────────────────────────── */
+    .browser-warn {
+      display: none;
+      background: var(--warn-bg); border: 1px solid var(--warn-border);
+      color: var(--warn-text); border-radius: 10px;
+      padding: 12px 16px; font-size: 14px; margin-bottom: 28px;
+    }
+    .browser-warn.visible { display: block; }
+
+    /* ── Cards grid ───────────────────────────────────────────────────────── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
       margin-bottom: 48px;
     }
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 600;
-      font-size: 15px;
-      letter-spacing: -0.01em;
-    }
-    .brand-mark {
-      width: 28px;
-      height: 28px;
-      display: grid;
-      place-items: center;
-      background: var(--accent);
-      color: var(--accent-fg);
-      border-radius: 7px;
-      font-size: 14px;
-    }
-
-    .theme-toggle {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 6px 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 13px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: border-color 0.15s ease, background 0.15s ease;
-    }
-    .theme-toggle:hover { background: var(--surface); }
-    .theme-toggle svg { width: 14px; height: 14px; }
-
-    h1 {
-      font-size: 36px;
-      line-height: 1.15;
-      letter-spacing: -0.025em;
-      margin: 0 0 14px;
-      font-weight: 700;
-    }
-    .tagline {
-      font-size: 17px;
-      color: var(--muted);
-      margin: 0 0 36px;
-    }
-
-    .install-card {
+    .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 28px;
-      margin-bottom: 32px;
+      border-radius: var(--radius);
+      padding: 22px;
       box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: 14px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .card:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow), 0 0 0 3px var(--accent-dim);
+    }
+    .card.unavailable { opacity: .65; pointer-events: none; }
+    .card.unavailable:hover { border-color: var(--border); box-shadow: var(--shadow); }
+
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+
+    .card-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: grid; place-items: center; font-size: 20px; flex-shrink: 0;
+    }
+    .icon-tx   { background: var(--accent-dim); }
+    .icon-rx   { background: var(--green-dim); }
+    .icon-mini { background: var(--orange-dim); }
+
+    .version-badge {
+      font-size: 11px; font-weight: 600; letter-spacing: .03em;
+      padding: 3px 8px; border-radius: 20px; white-space: nowrap;
+    }
+    .badge-available { background: var(--green-dim);  color: var(--green); }
+    .badge-soon      { background: var(--surface2);   color: var(--muted); }
+
+    .card-title { font-size: 15px; font-weight: 700; letter-spacing: -.01em; margin: 0; }
+    .card-desc  { font-size: 13px; color: var(--muted); line-height: 1.5; flex: 1; }
+
+    /* ESP Web Tools button slot */
+    .install-slot { margin-top: auto; }
+    esp-web-install-button { display: block; }
+
+    .btn-install {
+      width: 100%; appearance: none;
+      background: var(--accent); color: var(--accent-fg);
+      border: none; font-family: inherit; font-size: 14px; font-weight: 600;
+      padding: 11px 16px; border-radius: 9px; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      transition: background .15s, transform .05s;
+    }
+    .btn-install:hover   { filter: brightness(1.1); }
+    .btn-install:active  { transform: translateY(1px); }
+
+    .btn-soon {
+      width: 100%; background: var(--surface2); color: var(--muted);
+      border: 1px dashed var(--border); font-family: inherit;
+      font-size: 14px; font-weight: 500; padding: 11px 16px;
+      border-radius: 9px; cursor: not-allowed;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
     }
 
-    .install-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
+    /* Skeleton loader */
+    .skeleton {
+      height: 38px; border-radius: 9px;
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .card-title.skeleton, .card-desc.skeleton { height: 14px; border-radius: 4px; }
+    .card-desc.skeleton { height: 42px; }
+
+    /* ── Info sections ────────────────────────────────────────────────────── */
+    section { margin-top: 36px; }
+    h2 { font-size: 17px; letter-spacing: -.01em; margin: 0 0 12px; }
+    ul, ol { margin: 0; padding-left: 20px; }
+    li { margin-bottom: 6px; color: var(--muted); font-size: 14px; }
+    li strong { color: var(--text); }
+    li::marker { color: var(--border); }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px; background: var(--code-bg);
+      padding: 2px 6px; border-radius: 4px;
+    }
+    kbd {
+      font-family: inherit; font-size: 12px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px;
     }
 
-    /* Style the slotted button inside <esp-web-install-button> */
-    .install-btn {
-      appearance: none;
-      background: var(--accent);
-      color: var(--accent-fg);
-      border: none;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 600;
-      padding: 12px 22px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.15s ease, transform 0.05s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
+    /* ── Footer ───────────────────────────────────────────────────────────── */
+    footer {
+      margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border);
+      font-size: 13px; color: var(--muted);
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
     }
-    .install-btn:hover { background: var(--accent-hover); }
-    .install-btn:active { transform: translateY(1px); }
-
-    .install-meta {
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .install-meta code {
-      background: var(--code-bg);
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-    }
-
-    .unsupported {
-      display: block;
-      margin-top: 16px;
-      padding: 12px 14px;
-      background: var(--warn-bg);
-      border: 1px solid var(--warn-border);
-      color: var(--warn-text);
-      border-radius: 8px;
-      font-size: 14px;
-    }
-
-    section { margin-top: 40px; }
-    h2 {
-      font-size: 18px;
-      margin: 0 0 14px;
-      letter-spacing: -0.01em;
-    }
-    ul, ol { margin: 0; padding-left: 22px; }
-    li { margin-bottom: 6px; }
-    li::marker { color: var(--muted); }
-
-    code, kbd {
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-      font-size: 13px;
-      background: var(--code-bg);
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-
-    .steps {
-      counter-reset: step;
-      list-style: none;
-      padding-left: 0;
-    }
-    .steps li {
-      counter-increment: step;
-      padding-left: 36px;
-      position: relative;
-      margin-bottom: 14px;
-    }
-    .steps li::before {
-      content: counter(step);
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 24px;
-      height: 24px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-    }
-
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    footer {
-      margin-top: 64px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-      font-size: 13px;
-      color: var(--muted);
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
+    #buildInfo { font-size: 12px; color: var(--muted); opacity: .7; }
 
-    /* Hide initial-state of esp-web-install-button so layout doesn't jump */
     esp-web-install-button:not(:defined) { visibility: hidden; }
-
-    @media (max-width: 480px) {
-      h1 { font-size: 28px; }
-      .container { padding: 24px 18px 56px; }
-      .install-card { padding: 22px; }
-    }
   </style>
 </head>
 <body>
-  <div class="container">
+<div class="wrap">
 
-    <header>
-      <div class="brand">
-        <span class="brand-mark">❄</span>
-        <span>Snow Transceiver</span>
-      </div>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="4"></circle>
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-        </svg>
-        <span id="themeLabel">Auto</span>
-      </button>
-    </header>
-
-    <h1>Flash the Snow Transceiver to your ESP32.</h1>
-    <p class="tagline">
-      Click install, pick the right serial port, and the latest firmware and dashboard
-      are written to your board in under a minute. No drivers, no IDE.
-    </p>
-
-    <div class="install-card">
-      <div class="install-row">
-        <esp-web-install-button manifest="./manifest.json">
-          <button slot="activate" class="install-btn">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
-                 stroke="currentColor" stroke-width="2.2"
-                 stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Install firmware
-          </button>
-          <span slot="unsupported" class="unsupported">
-            Your browser doesn't support Web Serial. Open this page in
-            <strong>Chrome</strong>, <strong>Edge</strong>, or <strong>Opera</strong> on desktop.
-          </span>
-          <span slot="not-allowed" class="unsupported">
-            Web Serial requires a secure context. Open this page over HTTPS.
-          </span>
-        </esp-web-install-button>
-
-        <div class="install-meta">
-          <div>Target: <code>ESP32 WROOM (4&nbsp;MB)</code></div>
-          <div>Includes firmware + dashboard files (LittleFS).</div>
-        </div>
-      </div>
+  <header>
+    <div class="brand">
+      <span class="brand-mark">❄</span>
+      <span>Snow Transceiver</span>
     </div>
+    <button class="theme-btn" id="themeToggle">☀︎ Auto</button>
+  </header>
 
-    <section>
-      <h2>What you need</h2>
-      <ul>
-        <li>A uPesy ESP32 WROOM 32E (or any compatible ESP32 with 4&nbsp;MB flash)</li>
-        <li>A USB-C cable connected to your computer</li>
-        <li>A Chromium-based browser (Chrome, Edge, Opera) — Firefox and Safari don't support Web Serial</li>
-      </ul>
-    </section>
+  <h1>Flash your Snow Transceiver.</h1>
+  <p class="tagline">Pick the firmware for your board, connect over USB, and flash in seconds. No IDE, no drivers, no terminal.</p>
 
-    <section>
-      <h2>How it works</h2>
-      <ol class="steps">
-        <li>Plug your ESP32 into a USB port.</li>
-        <li>Click <strong>Install firmware</strong>, then pick the serial port for your board.</li>
-        <li>Choose <em>Install</em> when prompted. The flasher erases the chip and writes the firmware + LittleFS dashboard files.</li>
-        <li>When the flash finishes, the board reboots and starts the Wi-Fi access point <code>Snow Transceiver</code> (password <code>1234567890</code>).</li>
-        <li>Connect to that network and open <code>http://192.168.4.1</code> to use the dashboard.</li>
-      </ol>
-    </section>
-
-    <section>
-      <h2>Troubleshooting</h2>
-      <ul>
-        <li>If the install button is greyed out, switch to Chrome / Edge / Opera on desktop.</li>
-        <li>If no serial port appears, install the USB-to-UART driver for your board (CP2102 or CH340 depending on the model) and reload this page.</li>
-        <li>If the flash hangs at &ldquo;connecting&rdquo;, hold the <kbd>BOOT</kbd> button on the board, click install again, and release once it starts.</li>
-        <li>The dashboard requires the LittleFS partition — this flasher writes it for you automatically.</li>
-      </ul>
-    </section>
-
-    <footer>
-      <span>Powered by <a href="https://esphome.github.io/esp-web-tools/" rel="noopener">ESP Web Tools</a></span>
-      <span><a href="#" id="repoLink" rel="noopener">View source on GitHub</a></span>
-    </footer>
+  <div class="browser-warn" id="browserWarn">
+    ⚠️ <strong>Chrome, Edge, or Opera required.</strong>
+    Web Serial isn't supported in Firefox or Safari.
+    Open this page in a Chromium-based browser on desktop.
   </div>
 
-  <script>
-    // Theme handling: cycles Auto -> Light -> Dark -> Auto, persisted in localStorage.
-    (function () {
-      const root = document.documentElement;
-      const btn = document.getElementById('themeToggle');
-      const label = document.getElementById('themeLabel');
-      const order = ['auto', 'light', 'dark'];
-      const stored = localStorage.getItem('theme') || 'auto';
+  <!-- Cards injected by JS from releases.json -->
+  <div class="cards" id="cards">
+    <!-- skeleton while loading -->
+    <div class="card">
+      <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
+      <div class="card-title skeleton"></div>
+      <div class="card-desc skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+    <div class="card">
+      <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
+      <div class="card-title skeleton"></div>
+      <div class="card-desc skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+    <div class="card">
+      <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
+      <div class="card-title skeleton"></div>
+      <div class="card-desc skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+  </div>
 
-      function apply(mode) {
-        if (mode === 'auto') root.removeAttribute('data-theme');
-        else root.setAttribute('data-theme', mode);
-        label.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
-        localStorage.setItem('theme', mode);
-      }
-      apply(stored);
+  <section>
+    <h2>What you need</h2>
+    <ul>
+      <li><strong>uPesy ESP32 WROOM 32E</strong> (or any ESP32 with 4 MB flash)</li>
+      <li><strong>USB-C cable</strong> connected to your computer</li>
+      <li><strong>Chrome, Edge, or Opera</strong> — Firefox and Safari don't support Web Serial</li>
+    </ul>
+  </section>
 
-      btn.addEventListener('click', () => {
-        const current = localStorage.getItem('theme') || 'auto';
-        const next = order[(order.indexOf(current) + 1) % order.length];
-        apply(next);
-      });
-    })();
+  <section>
+    <h2>How to flash</h2>
+    <ol>
+      <li>Plug your ESP32 into USB.</li>
+      <li>Pick the right firmware card above and click <strong>Install</strong>.</li>
+      <li>Select the serial port for your board in the browser dialog.</li>
+      <li>Click <em>Install</em> when prompted — the chip is erased and firmware + dashboard are written.</li>
+      <li>When done, the board reboots and broadcasts Wi-Fi <code>Snow Transceiver</code> (password <code>1234567890</code>).</li>
+      <li>Connect and open <code>http://192.168.4.1</code>.</li>
+    </ol>
+  </section>
 
-    // Set GitHub link to the current repo if served from *.github.io
-    (function () {
-      const host = location.hostname; // e.g. user.github.io
-      const path = location.pathname.split('/').filter(Boolean); // e.g. ["repo"]
-      if (host.endsWith('.github.io') && path.length > 0) {
-        const user = host.split('.')[0];
-        const repo = path[0];
-        document.getElementById('repoLink').href = `https://github.com/${user}/${repo}`;
-      } else {
-        document.getElementById('repoLink').style.display = 'none';
-      }
-    })();
-  </script>
+  <section>
+    <h2>Troubleshooting</h2>
+    <ul>
+      <li><strong>Install button greyed out</strong> — switch to Chrome / Edge / Opera on desktop.</li>
+      <li><strong>No serial port appears</strong> — install the CP2102 or CH340 USB driver for your board, then reload this page.</li>
+      <li><strong>Stuck at "connecting"</strong> — hold <kbd>BOOT</kbd> on the board, click install, release once it starts.</li>
+      <li><strong>Dashboard doesn't load after flash</strong> — the LittleFS was included; try a hard power cycle.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>Powered by <a href="https://esphome.github.io/esp-web-tools/" rel="noopener">ESP Web Tools</a> ·
+          <a href="https://github.com/Lorenzo-x64/Snow-Depth-Sensor" rel="noopener" id="ghLink">GitHub</a></span>
+    <span id="buildInfo"></span>
+  </footer>
+
+</div><!-- .wrap -->
+
+<script type="module">
+// ── Theme toggle ─────────────────────────────────────────────────────────────
+(function () {
+  const root   = document.documentElement;
+  const btn    = document.getElementById('themeToggle');
+  const order  = ['auto', 'light', 'dark'];
+  const labels = { auto: '☀︎ Auto', light: '☀︎ Light', dark: '☾ Dark' };
+
+  function apply(mode) {
+    if (mode === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', mode);
+    btn.textContent = labels[mode];
+    localStorage.setItem('theme', mode);
+  }
+  apply(localStorage.getItem('theme') || 'auto');
+  btn.addEventListener('click', () => {
+    const cur  = localStorage.getItem('theme') || 'auto';
+    const next = order[(order.indexOf(cur) + 1) % order.length];
+    apply(next);
+  });
+})();
+
+// ── Browser support check ────────────────────────────────────────────────────
+if (!('serial' in navigator)) {
+  document.getElementById('browserWarn').classList.add('visible');
+}
+
+// ── Card config ──────────────────────────────────────────────────────────────
+const CARD_META = {
+  tx:      { icon: '📡', iconClass: 'icon-tx'   },
+  rx:      { icon: '📻', iconClass: 'icon-rx'   },
+  rx_mini: { icon: '🔹', iconClass: 'icon-mini' },
+};
+
+// ── Load releases.json and render cards ──────────────────────────────────────
+async function loadCards() {
+  let data;
+  try {
+    const resp = await fetch('./releases.json?_=' + Date.now());
+    if (!resp.ok) throw new Error('releases.json not found');
+    data = await resp.json();
+  } catch (e) {
+    document.getElementById('cards').innerHTML =
+      `<p style="color:var(--muted);font-size:14px">
+         Could not load release info. The first CI run may still be in progress.
+         <a href="https://github.com/Lorenzo-x64/Snow-Depth-Sensor/actions" rel="noopener">Check Actions →</a>
+       </p>`;
+    return;
+  }
+
+  // Build info in footer
+  if (data.generated_at) {
+    const d = new Date(data.generated_at);
+    document.getElementById('buildInfo').textContent =
+      'Updated ' + d.toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' });
+  }
+
+  const variants = data.variants;
+  const order    = ['tx', 'rx', 'rx_mini'];
+  const cards    = document.getElementById('cards');
+  cards.innerHTML = '';
+
+  for (const key of order) {
+    const v    = variants[key];
+    const meta = CARD_META[key];
+    if (!v) continue;
+
+    const card = document.createElement('div');
+    card.className = 'card' + (v.available ? '' : ' unavailable');
+
+    if (v.available) {
+      // Available — show install button
+      card.innerHTML = `
+        <div class="card-header">
+          <span class="card-icon ${meta.iconClass}">${meta.icon}</span>
+          <span class="version-badge badge-available">v${v.version}</span>
+        </div>
+        <div>
+          <p class="card-title">${v.label}</p>
+          <p class="card-desc">${v.description}</p>
+        </div>
+        <div class="install-slot">
+          <esp-web-install-button manifest="./${v.manifest}">
+            <button slot="activate" class="btn-install">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.2"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Install
+            </button>
+            <span slot="unsupported" style="font-size:12px;color:var(--muted)">
+              Use Chrome / Edge / Opera
+            </span>
+          </esp-web-install-button>
+        </div>`;
+    } else {
+      // Not yet released
+      card.innerHTML = `
+        <div class="card-header">
+          <span class="card-icon ${meta.iconClass}">${meta.icon}</span>
+          <span class="version-badge badge-soon">Coming soon</span>
+        </div>
+        <div>
+          <p class="card-title">${v.label}</p>
+          <p class="card-desc">${v.description}</p>
+        </div>
+        <div class="install-slot">
+          <div class="btn-soon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Not yet released
+          </div>
+        </div>`;
+    }
+    cards.appendChild(card);
+  }
+}
+
+loadCards();
+</script>
 </body>
 </html>
