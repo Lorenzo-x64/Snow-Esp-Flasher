@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Snow Transceiver — Web Flasher</title>
+  <meta name="description" content="Flash the Snow Transceiver firmware to your ESP32 directly from your browser. No drivers, no IDE." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E%E2%9D%84%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+
+  <script
+    type="module"
+    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"
+  ></script>
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-fg: #ffffff;
+      --warn-bg: #fef3c7;
+      --warn-border: #fde68a;
+      --warn-text: #78350f;
+      --code-bg: #f1f5f9;
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0a0f1c;
+      --surface: #111827;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #1e293b;
+      --accent: #60a5fa;
+      --accent-hover: #93c5fd;
+      --accent-fg: #0a0f1c;
+      --warn-bg: #422006;
+      --warn-border: #78350f;
+      --warn-text: #fde68a;
+      --code-bg: #111827;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0a0f1c;
+        --surface: #111827;
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+        --border: #1e293b;
+        --accent: #60a5fa;
+        --accent-hover: #93c5fd;
+        --accent-fg: #0a0f1c;
+        --warn-bg: #422006;
+        --warn-border: #78350f;
+        --warn-text: #fde68a;
+        --code-bg: #111827;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 48px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-radius: 7px;
+      font-size: 14px;
+    }
+
+    .theme-toggle {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .theme-toggle:hover { background: var(--surface); }
+    .theme-toggle svg { width: 14px; height: 14px; }
+
+    h1 {
+      font-size: 36px;
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+      margin: 0 0 14px;
+      font-weight: 700;
+    }
+    .tagline {
+      font-size: 17px;
+      color: var(--muted);
+      margin: 0 0 36px;
+    }
+
+    .install-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 32px;
+      box-shadow: var(--shadow);
+    }
+
+    .install-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* Style the slotted button inside <esp-web-install-button> */
+    .install-btn {
+      appearance: none;
+      background: var(--accent);
+      color: var(--accent-fg);
+      border: none;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 22px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.05s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .install-btn:hover { background: var(--accent-hover); }
+    .install-btn:active { transform: translateY(1px); }
+
+    .install-meta {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .install-meta code {
+      background: var(--code-bg);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .unsupported {
+      display: block;
+      margin-top: 16px;
+      padding: 12px 14px;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      color: var(--warn-text);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    section { margin-top: 40px; }
+    h2 {
+      font-size: 18px;
+      margin: 0 0 14px;
+      letter-spacing: -0.01em;
+    }
+    ul, ol { margin: 0; padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    li::marker { color: var(--muted); }
+
+    code, kbd {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 13px;
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .steps {
+      counter-reset: step;
+      list-style: none;
+      padding-left: 0;
+    }
+    .steps li {
+      counter-increment: step;
+      padding-left: 36px;
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 24px;
+      height: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    /* Hide initial-state of esp-web-install-button so layout doesn't jump */
+    esp-web-install-button:not(:defined) { visibility: hidden; }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 28px; }
+      .container { padding: 24px 18px 56px; }
+      .install-card { padding: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <div class="brand">
+        <span class="brand-mark">❄</span>
+        <span>Snow Transceiver</span>
+      </div>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+        </svg>
+        <span id="themeLabel">Auto</span>
+      </button>
+    </header>
+
+    <h1>Flash the Snow Transceiver to your ESP32.</h1>
+    <p class="tagline">
+      Click install, pick the right serial port, and the latest firmware and dashboard
+      are written to your board in under a minute. No drivers, no IDE.
+    </p>
+
+    <div class="install-card">
+      <div class="install-row">
+        <esp-web-install-button manifest="./manifest.json">
+          <button slot="activate" class="install-btn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                 stroke="currentColor" stroke-width="2.2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Install firmware
+          </button>
+          <span slot="unsupported" class="unsupported">
+            Your browser doesn't support Web Serial. Open this page in
+            <strong>Chrome</strong>, <strong>Edge</strong>, or <strong>Opera</strong> on desktop.
+          </span>
+          <span slot="not-allowed" class="unsupported">
+            Web Serial requires a secure context. Open this page over HTTPS.
+          </span>
+        </esp-web-install-button>
+
+        <div class="install-meta">
+          <div>Target: <code>ESP32 WROOM (4&nbsp;MB)</code></div>
+          <div>Includes firmware + dashboard files (LittleFS).</div>
+        </div>
+      </div>
+    </div>
+
+    <section>
+      <h2>What you need</h2>
+      <ul>
+        <li>A uPesy ESP32 WROOM 32E (or any compatible ESP32 with 4&nbsp;MB flash)</li>
+        <li>A USB-C cable connected to your computer</li>
+        <li>A Chromium-based browser (Chrome, Edge, Opera) — Firefox and Safari don't support Web Serial</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li>Plug your ESP32 into a USB port.</li>
+        <li>Click <strong>Install firmware</strong>, then pick the serial port for your board.</li>
+        <li>Choose <em>Install</em> when prompted. The flasher erases the chip and writes the firmware + LittleFS dashboard files.</li>
+        <li>When the flash finishes, the board reboots and starts the Wi-Fi access point <code>Snow Transceiver</code> (password <code>1234567890</code>).</li>
+        <li>Connect to that network and open <code>http://192.168.4.1</code> to use the dashboard.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li>If the install button is greyed out, switch to Chrome / Edge / Opera on desktop.</li>
+        <li>If no serial port appears, install the USB-to-UART driver for your board (CP2102 or CH340 depending on the model) and reload this page.</li>
+        <li>If the flash hangs at &ldquo;connecting&rdquo;, hold the <kbd>BOOT</kbd> button on the board, click install again, and release once it starts.</li>
+        <li>The dashboard requires the LittleFS partition — this flasher writes it for you automatically.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <span>Powered by <a href="https://esphome.github.io/esp-web-tools/" rel="noopener">ESP Web Tools</a></span>
+      <span><a href="#" id="repoLink" rel="noopener">View source on GitHub</a></span>
+    </footer>
+  </div>
+
+  <script>
+    // Theme handling: cycles Auto -> Light -> Dark -> Auto, persisted in localStorage.
+    (function () {
+      const root = document.documentElement;
+      const btn = document.getElementById('themeToggle');
+      const label = document.getElementById('themeLabel');
+      const order = ['auto', 'light', 'dark'];
+      const stored = localStorage.getItem('theme') || 'auto';
+
+      function apply(mode) {
+        if (mode === 'auto') root.removeAttribute('data-theme');
+        else root.setAttribute('data-theme', mode);
+        label.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+        localStorage.setItem('theme', mode);
+      }
+      apply(stored);
+
+      btn.addEventListener('click', () => {
+        const current = localStorage.getItem('theme') || 'auto';
+        const next = order[(order.indexOf(current) + 1) % order.length];
+        apply(next);
+      });
+    })();
+
+    // Set GitHub link to the current repo if served from *.github.io
+    (function () {
+      const host = location.hostname; // e.g. user.github.io
+      const path = location.pathname.split('/').filter(Boolean); // e.g. ["repo"]
+      if (host.endsWith('.github.io') && path.length > 0) {
+        const user = host.split('.')[0];
+        const repo = path[0];
+        document.getElementById('repoLink').href = `https://github.com/${user}/${repo}`;
+      } else {
+        document.getElementById('repoLink').style.display = 'none';
+      }
+    })();
+  </script>
+</body>
+</html>
