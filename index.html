@@ -4,323 +4,867 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Snow Transceiver — Web Flasher</title>
-  <meta name="description" content="Flash TX, RX Full, or RX Lite firmware to your ESP32 directly from your browser." />
+  <meta name="description" content="Flash TX, RX Full, or RX Lite firmware to your ESP32 directly from your browser. No IDE, no drivers, no terminal." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E%E2%9D%84%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
   <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
   <style>
-    /* ── Tokens ───────────────────────────────────────────────────────────── */
+    /* ─── Tokens ─────────────────────────────────────────────────────────── */
     :root {
-      --bg:          #ffffff;
-      --surface:     #f8fafc;
-      --surface2:    #f1f5f9;
-      --text:        #0f172a;
-      --muted:       #64748b;
-      --border:      #e2e8f0;
-      --accent:      #2563eb;
-      --accent-dim:  #dbeafe;
-      --accent-fg:   #ffffff;
-      --green:       #16a34a;
-      --green-dim:   #dcfce7;
-      --orange:      #ea580c;
-      --orange-dim:  #ffedd5;
-      --warn-bg:     #fef3c7;
-      --warn-border: #fde68a;
-      --warn-text:   #78350f;
-      --code-bg:     #f1f5f9;
-      --shadow-sm:   0 1px 2px rgba(15,23,42,.05);
-      --shadow:      0 1px 3px rgba(15,23,42,.06), 0 4px 20px rgba(15,23,42,.06);
-      --radius:      14px;
+      --bg:           #f7f8fb;
+      --bg-deep:      #eef0f5;
+      --surface:      #ffffff;
+      --surface-2:    #f1f3f8;
+      --text:         #0b1220;
+      --text-2:       #2a334a;
+      --muted:        #6a7388;
+      --muted-2:      #9aa3b8;
+      --border:       #e3e6ef;
+      --border-2:     #d6dbe7;
+      --accent:       #2a6df4;
+      --accent-soft:  #dbe7ff;
+      --accent-ink:   #ffffff;
+      --ice:          #7cc6ff;
+      --ok:           #1f9d6b;
+      --ok-soft:      #d6f1e3;
+      --warn-bg:      #fff4d9;
+      --warn-border:  #f4d785;
+      --warn-text:    #5a3d00;
+      --code-bg:      #f0f2f8;
+      --grid-line:    rgba(11,18,32,0.045);
+      --aurora-1:     rgba(124,198,255,0.35);
+      --aurora-2:     rgba(42,109,244,0.18);
+      --aurora-3:     rgba(180,210,255,0.45);
+      --shadow-sm:    0 1px 2px rgba(11,18,32,.05);
+      --shadow:       0 1px 2px rgba(11,18,32,.04), 0 10px 30px -12px rgba(11,18,32,.12);
+      --shadow-lg:    0 1px 2px rgba(11,18,32,.04), 0 30px 60px -20px rgba(11,18,32,.18);
+      --radius:       14px;
+      --radius-lg:    20px;
     }
+
     [data-theme="dark"] {
-      --bg:          #080e1a;
-      --surface:     #0f172a;
-      --surface2:    #1e293b;
-      --text:        #f1f5f9;
-      --muted:       #94a3b8;
-      --border:      #1e293b;
-      --accent:      #60a5fa;
-      --accent-dim:  #1e3a5f;
-      --accent-fg:   #080e1a;
-      --green:       #4ade80;
-      --green-dim:   #14532d;
-      --orange:      #fb923c;
-      --orange-dim:  #431407;
-      --warn-bg:     #422006;
-      --warn-border: #78350f;
-      --warn-text:   #fde68a;
-      --code-bg:     #0f172a;
-      --shadow-sm:   0 1px 2px rgba(0,0,0,.4);
-      --shadow:      0 1px 3px rgba(0,0,0,.4), 0 4px 20px rgba(0,0,0,.3);
+      --bg:           #07090f;
+      --bg-deep:      #04060b;
+      --surface:      #0d111a;
+      --surface-2:    #131826;
+      --text:         #eef1f8;
+      --text-2:       #c8cee0;
+      --muted:        #8a93ad;
+      --muted-2:      #5c6580;
+      --border:       #1c2233;
+      --border-2:     #262d44;
+      --accent:       #7cc6ff;
+      --accent-soft:  #1a2c47;
+      --accent-ink:   #04060b;
+      --ice:          #b6dcff;
+      --ok:           #6ee7a8;
+      --ok-soft:      #14321f;
+      --warn-bg:      #2b1e05;
+      --warn-border:  #5a420d;
+      --warn-text:    #f3d97b;
+      --code-bg:      #131826;
+      --grid-line:    rgba(238,241,248,0.05);
+      --aurora-1:     rgba(124,198,255,0.22);
+      --aurora-2:     rgba(82,140,255,0.18);
+      --aurora-3:     rgba(180,210,255,0.10);
+      --shadow-sm:    0 1px 2px rgba(0,0,0,.4);
+      --shadow:       0 1px 2px rgba(0,0,0,.4), 0 20px 40px -16px rgba(0,0,0,.5);
+      --shadow-lg:    0 1px 2px rgba(0,0,0,.4), 0 40px 80px -24px rgba(0,0,0,.6);
     }
+
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
-        --bg:#080e1a; --surface:#0f172a; --surface2:#1e293b;
-        --text:#f1f5f9; --muted:#94a3b8; --border:#1e293b;
-        --accent:#60a5fa; --accent-dim:#1e3a5f; --accent-fg:#080e1a;
-        --green:#4ade80; --green-dim:#14532d;
-        --orange:#fb923c; --orange-dim:#431407;
-        --warn-bg:#422006; --warn-border:#78350f; --warn-text:#fde68a;
-        --code-bg:#0f172a;
+        --bg:#07090f; --bg-deep:#04060b; --surface:#0d111a; --surface-2:#131826;
+        --text:#eef1f8; --text-2:#c8cee0; --muted:#8a93ad; --muted-2:#5c6580;
+        --border:#1c2233; --border-2:#262d44;
+        --accent:#7cc6ff; --accent-soft:#1a2c47; --accent-ink:#04060b;
+        --ice:#b6dcff; --ok:#6ee7a8; --ok-soft:#14321f;
+        --warn-bg:#2b1e05; --warn-border:#5a420d; --warn-text:#f3d97b;
+        --code-bg:#131826;
+        --grid-line:rgba(238,241,248,0.05);
+        --aurora-1:rgba(124,198,255,0.22);
+        --aurora-2:rgba(82,140,255,0.18);
+        --aurora-3:rgba(180,210,255,0.10);
         --shadow-sm:0 1px 2px rgba(0,0,0,.4);
-        --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 20px rgba(0,0,0,.3);
+        --shadow:0 1px 2px rgba(0,0,0,.4), 0 20px 40px -16px rgba(0,0,0,.5);
+        --shadow-lg:0 1px 2px rgba(0,0,0,.4), 0 40px 80px -24px rgba(0,0,0,.6);
       }
     }
 
-    /* ── Reset / base ─────────────────────────────────────────────────────── */
+    /* ─── Reset / base ───────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; }
-    html, body {
-      margin: 0; padding: 0;
-      background: var(--bg); color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                   "Helvetica Neue", Arial, sans-serif;
-      font-size: 16px; line-height: 1.55;
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
       -webkit-font-smoothing: antialiased;
-      transition: background .2s, color .2s;
+      text-rendering: optimizeLegibility;
+      font-feature-settings: "ss01", "cv11";
+      transition: background .25s ease, color .25s ease;
+      overflow-x: hidden;
     }
 
-    /* ── Layout ───────────────────────────────────────────────────────────── */
-    .wrap { max-width: 900px; margin: 0 auto; padding: 32px 24px 80px; }
+    .mono { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .serif-i { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; }
 
-    /* ── Header ───────────────────────────────────────────────────────────── */
-    header {
+    a { color: inherit; text-decoration: none; }
+    a:hover { color: var(--accent); }
+    button { font-family: inherit; }
+
+    /* ─── Layout ─────────────────────────────────────────────────────────── */
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 28px; }
+    .container-tight { max-width: 880px; margin: 0 auto; padding: 0 28px; }
+
+    /* ─── Top nav ────────────────────────────────────────────────────────── */
+    .nav {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: saturate(160%) blur(12px);
+      -webkit-backdrop-filter: saturate(160%) blur(12px);
+      background: color-mix(in oklab, var(--bg) 78%, transparent);
+      border-bottom: 1px solid transparent;
+      transition: border-color .2s ease, background .2s ease;
+    }
+    .nav.scrolled { border-bottom-color: var(--border); }
+    .nav-inner {
       display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 48px;
+      height: 64px;
     }
-    .brand { display: flex; align-items: center; gap: 10px;
-             font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
+    .brand {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-size: 14px; font-weight: 600; letter-spacing: -0.01em;
+    }
     .brand-mark {
-      width: 28px; height: 28px; display: grid; place-items: center;
-      background: var(--accent); color: var(--accent-fg);
-      border-radius: 7px; font-size: 14px;
+      width: 26px; height: 26px;
+      display: grid; place-items: center;
+      border-radius: 8px;
+      background: linear-gradient(140deg, var(--ice), var(--accent));
+      color: var(--accent-ink);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.25), 0 4px 12px -4px var(--accent);
     }
-    .theme-btn {
-      background: transparent; border: 1px solid var(--border);
-      color: var(--text); padding: 6px 12px; border-radius: 8px;
-      cursor: pointer; font-size: 13px; font-family: inherit;
-      transition: background .15s;
+    .brand-mark svg { width: 14px; height: 14px; }
+    .brand .pill {
+      font-size: 10.5px; font-weight: 500; letter-spacing: 0.04em;
+      padding: 2px 7px; border-radius: 999px;
+      background: var(--surface-2); color: var(--muted);
+      border: 1px solid var(--border);
+      text-transform: uppercase;
     }
-    .theme-btn:hover { background: var(--surface2); }
+    .nav-right { display: flex; align-items: center; gap: 6px; }
+    .icon-btn {
+      background: transparent; border: 1px solid transparent;
+      color: var(--text-2); font-size: 13px;
+      padding: 8px 12px; border-radius: 9px;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+    .icon-btn svg { width: 15px; height: 15px; }
 
-    /* ── Hero ─────────────────────────────────────────────────────────────── */
-    h1 {
-      font-size: clamp(28px, 5vw, 38px); line-height: 1.15;
-      letter-spacing: -.03em; margin: 0 0 12px; font-weight: 800;
+    /* ─── Hero ───────────────────────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      padding: 88px 0 64px;
+      overflow: hidden;
+      isolation: isolate;
     }
-    .tagline { font-size: 17px; color: var(--muted); margin: 0 0 40px; }
+    .hero-bg {
+      position: absolute; inset: -10% -5% auto -5%; height: 90%;
+      z-index: -1; pointer-events: none;
+    }
+    .hero-bg::before {
+      content: "";
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(60% 50% at 20% 30%, var(--aurora-1), transparent 70%),
+        radial-gradient(50% 50% at 80% 20%, var(--aurora-2), transparent 70%),
+        radial-gradient(40% 40% at 50% 80%, var(--aurora-3), transparent 70%);
+      filter: blur(20px);
+      animation: drift 18s ease-in-out infinite alternate;
+    }
+    @keyframes drift {
+      0%   { transform: translate3d(0,0,0)   scale(1); }
+      50%  { transform: translate3d(-2%, 1%, 0) scale(1.04); }
+      100% { transform: translate3d(2%, -1%, 0) scale(1.02); }
+    }
+    .hero-grid {
+      position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      background-image:
+        linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 30%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 30%, transparent 80%);
+    }
 
-    /* ── Browser warning ──────────────────────────────────────────────────── */
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted);
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 70%, transparent);
+      border-radius: 999px;
+      margin-bottom: 28px;
+    }
+    .eyebrow .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--ok); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ok) 25%, transparent);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+
+    h1.hero-title {
+      font-family: 'Geist', sans-serif;
+      font-size: clamp(40px, 6.4vw, 80px);
+      line-height: 1.02;
+      letter-spacing: -0.035em;
+      font-weight: 600;
+      margin: 0 0 22px;
+      max-width: 16ch;
+      color: var(--text);
+    }
+    h1.hero-title .accent {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      background: linear-gradient(110deg, var(--ice), var(--accent) 60%, var(--ice));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-size: 200% 100%;
+      animation: shine 8s ease-in-out infinite;
+    }
+    @keyframes shine {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .hero-sub {
+      font-size: clamp(16px, 1.5vw, 19px);
+      line-height: 1.5;
+      color: var(--text-2);
+      max-width: 56ch;
+      margin: 0 0 36px;
+    }
+
+    .hero-meta {
+      display: flex; align-items: center; gap: 18px;
+      flex-wrap: wrap;
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .hero-meta span { display: inline-flex; align-items: center; gap: 7px; }
+    .hero-meta svg { width: 13px; height: 13px; color: var(--accent); }
+
+    /* ─── Browser warning ────────────────────────────────────────────────── */
     .browser-warn {
       display: none;
-      background: var(--warn-bg); border: 1px solid var(--warn-border);
-      color: var(--warn-text); border-radius: 10px;
-      padding: 12px 16px; font-size: 14px; margin-bottom: 28px;
+      align-items: flex-start; gap: 12px;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      color: var(--warn-text);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 14px;
+      margin: 32px 0 0;
     }
-    .browser-warn.visible { display: block; }
+    .browser-warn.visible { display: flex; }
+    .browser-warn svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
 
-    /* ── Cards grid ───────────────────────────────────────────────────────── */
+    /* ─── Section heading ────────────────────────────────────────────────── */
+    .section { padding: 72px 0; position: relative; }
+    .section + .section { border-top: 1px solid var(--border); }
+
+    .section-head {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 24px; margin-bottom: 36px; flex-wrap: wrap;
+    }
+    .section-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted);
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-bottom: 12px;
+    }
+    .section-label::before {
+      content: ""; width: 18px; height: 1px; background: var(--accent);
+    }
+    h2.section-title {
+      font-size: clamp(26px, 3.2vw, 36px);
+      line-height: 1.1;
+      letter-spacing: -0.025em;
+      font-weight: 600;
+      margin: 0;
+      max-width: 22ch;
+    }
+    h2.section-title .serif-i {
+      font-size: 1.05em;
+      letter-spacing: -0.005em;
+      color: var(--text-2);
+    }
+    .section-desc {
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 36ch;
+      margin: 0;
+    }
+
+    /* ─── Firmware cards ─────────────────────────────────────────────────── */
+    #flash { padding-top: 56px; }
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
-      margin-bottom: 48px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
     }
 
     .card {
+      position: relative;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 22px;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: flex; flex-direction: column; gap: 18px;
       box-shadow: var(--shadow);
-      display: flex; flex-direction: column; gap: 14px;
-      transition: border-color .2s, box-shadow .2s;
+      transition: border-color .25s ease, transform .25s ease, box-shadow .25s ease;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      background:
+        radial-gradient(120% 60% at 50% -10%, var(--accent-soft), transparent 60%);
+      opacity: 0; transition: opacity .3s ease;
+      pointer-events: none;
     }
     .card:hover {
-      border-color: var(--accent);
-      box-shadow: var(--shadow), 0 0 0 3px var(--accent-dim);
+      border-color: var(--border-2);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
     }
-    .card.unavailable { opacity: .65; pointer-events: none; }
-    .card.unavailable:hover { border-color: var(--border); box-shadow: var(--shadow); }
+    .card:hover::before { opacity: 0.7; }
+    .card.unavailable { opacity: .7; }
+    .card.unavailable:hover {
+      transform: none; border-color: var(--border);
+      box-shadow: var(--shadow);
+    }
+    .card.unavailable::before { display: none; }
 
-    .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-
+    .card-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+      position: relative;
+    }
     .card-icon {
-      width: 40px; height: 40px; border-radius: 10px;
-      display: grid; place-items: center; font-size: 20px; flex-shrink: 0;
+      width: 44px; height: 44px;
+      display: grid; place-items: center;
+      border-radius: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      flex-shrink: 0;
     }
-    .icon-tx   { background: var(--accent-dim); }
-    .icon-rx   { background: var(--green-dim); }
-    .icon-mini { background: var(--orange-dim); }
+    .card-icon svg { width: 22px; height: 22px; }
+    .card-icon.icon-tx   { background: linear-gradient(140deg, var(--accent-soft), var(--surface-2)); color: var(--accent); }
+    .card-icon.icon-rx   { background: linear-gradient(140deg, var(--ok-soft), var(--surface-2)); color: var(--ok); }
+    .card-icon.icon-mini { background: linear-gradient(140deg, color-mix(in oklab, var(--ice) 20%, var(--surface-2)), var(--surface-2)); color: var(--ice); }
 
     .version-badge {
-      font-size: 11px; font-weight: 600; letter-spacing: .03em;
-      padding: 3px 8px; border-radius: 20px; white-space: nowrap;
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
+      padding: 4px 9px;
+      border-radius: 999px;
+      display: inline-flex; align-items: center; gap: 6px;
+      white-space: nowrap;
     }
-    .badge-available { background: var(--green-dim);  color: var(--green); }
-    .badge-soon      { background: var(--surface2);   color: var(--muted); }
+    .version-badge.available {
+      background: var(--ok-soft); color: var(--ok);
+    }
+    .version-badge.available .dot {
+      width: 5px; height: 5px; border-radius: 50%; background: var(--ok);
+    }
+    .version-badge.soon {
+      background: var(--surface-2); color: var(--muted);
+      border: 1px dashed var(--border-2);
+    }
 
-    .card-title { font-size: 15px; font-weight: 700; letter-spacing: -.01em; margin: 0; }
-    .card-desc  { font-size: 13px; color: var(--muted); line-height: 1.5; flex: 1; }
+    .card-body { position: relative; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .card-title {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      margin: 0;
+      color: var(--text);
+    }
+    .card-desc {
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: var(--muted);
+      margin: 0;
+    }
 
-    /* ESP Web Tools button slot */
-    .install-slot { margin-top: auto; }
+    .install-slot { position: relative; margin-top: 4px; }
     esp-web-install-button { display: block; }
+    esp-web-install-button:not(:defined) { visibility: hidden; }
 
     .btn-install {
       width: 100%; appearance: none;
-      background: var(--accent); color: var(--accent-fg);
-      border: none; font-family: inherit; font-size: 14px; font-weight: 600;
-      padding: 11px 16px; border-radius: 9px; cursor: pointer;
-      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-      transition: background .15s, transform .05s;
+      background: var(--text);
+      color: var(--bg);
+      border: 1px solid var(--text);
+      font-family: inherit; font-size: 14px; font-weight: 500;
+      letter-spacing: -0.005em;
+      padding: 12px 16px;
+      border-radius: 11px;
+      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      transition: transform .08s ease, filter .15s ease, box-shadow .2s ease;
+      box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, var(--shadow-sm);
     }
-    .btn-install:hover   { filter: brightness(1.1); }
-    .btn-install:active  { transform: translateY(1px); }
+    .btn-install:hover { filter: brightness(1.08); box-shadow: 0 10px 24px -10px var(--text); }
+    .btn-install:active { transform: translateY(1px); }
+    .btn-install svg { width: 14px; height: 14px; }
 
     .btn-soon {
-      width: 100%; background: var(--surface2); color: var(--muted);
-      border: 1px dashed var(--border); font-family: inherit;
-      font-size: 14px; font-weight: 500; padding: 11px 16px;
-      border-radius: 9px; cursor: not-allowed;
-      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      width: 100%;
+      background: transparent;
+      color: var(--muted);
+      border: 1px dashed var(--border-2);
+      font-family: inherit; font-size: 13.5px; font-weight: 500;
+      padding: 12px 16px;
+      border-radius: 11px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-soon svg { width: 14px; height: 14px; }
+
+    .unsupported-msg {
+      display: block;
+      font-family: 'Geist Mono', monospace;
+      font-size: 11.5px;
+      color: var(--muted);
+      text-align: center;
+      padding: 12px;
+      border: 1px dashed var(--border-2);
+      border-radius: 11px;
     }
 
-    /* Skeleton loader */
+    /* Skeleton */
     .skeleton {
-      height: 38px; border-radius: 9px;
-      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--surface-2) 25%, color-mix(in oklab, var(--surface-2) 60%, var(--border)) 50%, var(--surface-2) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.4s infinite;
     }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-    .card-title.skeleton, .card-desc.skeleton { height: 14px; border-radius: 4px; }
-    .card-desc.skeleton { height: 42px; }
+    .sk-icon  { width:44px; height:44px; border-radius:12px; }
+    .sk-title { height:14px; width:60%; }
+    .sk-desc  { height:32px; }
+    .sk-btn   { height:44px; border-radius:11px; }
 
-    /* ── Info sections ────────────────────────────────────────────────────── */
-    section { margin-top: 36px; }
-    h2 { font-size: 17px; letter-spacing: -.01em; margin: 0 0 12px; }
-    ul, ol { margin: 0; padding-left: 20px; }
-    li { margin-bottom: 6px; color: var(--muted); font-size: 14px; }
-    li strong { color: var(--text); }
-    li::marker { color: var(--border); }
-    code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12px; background: var(--code-bg);
-      padding: 2px 6px; border-radius: 4px;
+    /* ─── How it works ───────────────────────────────────────────────────── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      overflow: hidden;
+      box-shadow: var(--shadow);
     }
-    kbd {
-      font-family: inherit; font-size: 12px; background: var(--surface2);
-      border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px;
+    .step {
+      padding: 26px 24px;
+      display: flex; flex-direction: column; gap: 12px;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+    .step:last-child { border-right: none; }
+    @media (max-width: 900px) {
+      .step { border-right: none; border-bottom: 1px solid var(--border); }
+      .step:last-child { border-bottom: none; }
+    }
+    .step-num {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11.5px; letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .step-num .n {
+      color: var(--accent);
+    }
+    .step-title {
+      font-size: 15.5px; font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      margin: 0;
+    }
+    .step-desc {
+      font-size: 13.5px; line-height: 1.55;
+      color: var(--muted);
+      margin: 0;
+    }
+    .step code {
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 1.5px 6px; border-radius: 5px;
+      color: var(--text-2);
+    }
+    .step kbd {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11.5px;
+      background: var(--surface-2); border: 1px solid var(--border-2);
+      border-bottom-width: 2px; border-radius: 5px;
+      padding: 1px 6px;
+      color: var(--text-2);
     }
 
-    /* ── Footer ───────────────────────────────────────────────────────────── */
+    /* ─── Requirements + Troubleshooting grid ────────────────────────────── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .info-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 22px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .info-item-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .info-item-label svg { width: 13px; height: 13px; color: var(--accent); }
+    .info-item-title {
+      font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+      color: var(--text); margin: 0;
+    }
+    .info-item-desc {
+      font-size: 13.5px; line-height: 1.55; color: var(--muted); margin: 0;
+    }
+    .info-item-desc code, .info-item-desc kbd {
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 1.5px 6px; border-radius: 5px;
+      color: var(--text-2);
+    }
+
+    /* ─── Footer ─────────────────────────────────────────────────────────── */
     footer {
-      margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border);
-      font-size: 13px; color: var(--muted);
-      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+      border-top: 1px solid var(--border);
+      padding: 36px 0 60px;
+      font-size: 13px;
+      color: var(--muted);
     }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    .footer-inner {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 18px; flex-wrap: wrap;
+    }
+    .footer-brand { display: flex; align-items: center; gap: 10px; }
+    .footer-brand .brand-mark { width: 22px; height: 22px; border-radius: 6px; }
+    .footer-brand .brand-mark svg { width: 12px; height: 12px; }
+    .footer-meta { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+    .footer-meta a { color: var(--text-2); }
+    .footer-meta a:hover { color: var(--accent); }
+    #buildInfo { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--muted-2); }
 
-    #buildInfo { font-size: 12px; color: var(--muted); opacity: .7; }
+    /* ─── Snow particles ─────────────────────────────────────────────────── */
+    #snow {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.45;
+    }
+    [data-theme="dark"] #snow,
+    :root:not([data-theme="light"]) #snow {
+      opacity: 0.55;
+    }
 
-    esp-web-install-button:not(:defined) { visibility: hidden; }
+    /* ─── Responsive tweaks ─────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .hero { padding: 56px 0 40px; }
+      .section { padding: 56px 0; }
+      .nav-inner { height: 56px; }
+      .container, .container-tight { padding: 0 20px; }
+      .brand .pill { display: none; }
+    }
   </style>
 </head>
 <body>
-<div class="wrap">
 
-  <header>
+<canvas id="snow" aria-hidden="true"></canvas>
+
+<!-- ─── Nav ────────────────────────────────────────────────────────────── -->
+<nav class="nav" id="nav">
+  <div class="container nav-inner">
     <div class="brand">
-      <span class="brand-mark">❄</span>
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="2" x2="12" y2="22"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/>
+          <line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/>
+        </svg>
+      </span>
       <span>Snow Transceiver</span>
+      <span class="pill">Web Flasher</span>
     </div>
-    <button class="theme-btn" id="themeToggle">☀︎ Auto</button>
-  </header>
-
-  <h1>Flash your Snow Transceiver.</h1>
-  <p class="tagline">Pick the firmware for your board, connect over USB, and flash in seconds. No IDE, no drivers, no terminal.</p>
-
-  <div class="browser-warn" id="browserWarn">
-    ⚠️ <strong>Chrome, Edge, or Opera required.</strong>
-    Web Serial isn't supported in Firefox or Safari.
-    Open this page in a Chromium-based browser on desktop.
-  </div>
-
-  <!-- Cards injected by JS from releases.json -->
-  <div class="cards" id="cards">
-    <!-- skeleton while loading -->
-    <div class="card">
-      <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
-      <div class="card-title skeleton"></div>
-      <div class="card-desc skeleton"></div>
-      <div class="skeleton"></div>
-    </div>
-    <div class="card">
-      <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
-      <div class="card-title skeleton"></div>
-      <div class="card-desc skeleton"></div>
-      <div class="skeleton"></div>
-    </div>
-    <div class="card">
-      <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
-      <div class="card-title skeleton"></div>
-      <div class="card-desc skeleton"></div>
-      <div class="skeleton"></div>
+    <div class="nav-right">
+      <a class="icon-btn" href="https://github.com/Lorenzo-x64/Snow-Esp-Flasher.github.io" rel="noopener" id="ghLink" aria-label="GitHub repository">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 .5C5.7.5.6 5.6.6 11.9c0 5 3.3 9.3 7.8 10.8.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2.9-.3 1.9-.4 2.9-.4s2 .1 2.9.4c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.5-1.5 7.8-5.8 7.8-10.8C23.4 5.6 18.3.5 12 .5z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
+      <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+        <span id="themeLabel">Auto</span>
+      </button>
     </div>
   </div>
+</nav>
 
-  <section>
-    <h2>What you need</h2>
-    <ul>
-      <li><strong>uPesy ESP32 WROOM 32E</strong> (or any ESP32 with 4 MB flash)</li>
-      <li><strong>USB-C cable</strong> connected to your computer</li>
-      <li><strong>Chrome, Edge, or Opera</strong> — Firefox and Safari don't support Web Serial</li>
-    </ul>
-  </section>
+<!-- ─── Hero ───────────────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="hero-grid" aria-hidden="true"></div>
 
-  <section>
-    <h2>How to flash</h2>
-    <ol>
-      <li>Plug your ESP32 into USB.</li>
-      <li>Pick the right firmware card above and click <strong>Install</strong>.</li>
-      <li>Select the serial port for your board in the browser dialog.</li>
-      <li>Click <em>Install</em> when prompted — the chip is erased and firmware + dashboard are written.</li>
-      <li>When done, the board reboots and broadcasts Wi-Fi <code>Snow Transceiver</code> (password <code>1234567890</code>).</li>
-      <li>Connect and open <code>http://192.168.4.1</code>.</li>
-    </ol>
-  </section>
+  <div class="container">
+    <span class="eyebrow">
+      <span class="dot"></span>
+      ESP32 · Web Serial · v0.12.9
+    </span>
 
-  <section>
-    <h2>Troubleshooting</h2>
-    <ul>
-      <li><strong>Install button greyed out</strong> — switch to Chrome / Edge / Opera on desktop.</li>
-      <li><strong>No serial port appears</strong> — install the CP2102 or CH340 USB driver for your board, then reload this page.</li>
-      <li><strong>Stuck at "connecting"</strong> — hold <kbd>BOOT</kbd> on the board, click install, release once it starts.</li>
-      <li><strong>Dashboard doesn't load after flash</strong> — the LittleFS was included; try a hard power cycle.</li>
-    </ul>
-  </section>
+    <h1 class="hero-title">
+      Flash firmware <span class="accent">right from</span> your browser.
+    </h1>
 
-  <footer>
-    <span>Powered by <a href="https://esphome.github.io/esp-web-tools/" rel="noopener">ESP Web Tools</a> ·
-          <a href="https://github.com/Lorenzo-x64/Snow-Depth-Sensor" rel="noopener" id="ghLink">GitHub</a></span>
-    <span id="buildInfo"></span>
-  </footer>
+    <p class="hero-sub">
+      Pick the build for your Snow Transceiver, plug in over USB, and flash in seconds.
+      No IDE, no drivers, no terminal — just one click.
+    </p>
 
-</div><!-- .wrap -->
+    <div class="hero-meta">
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Driver-free install
+      </span>
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Three firmware variants
+      </span>
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Built-in Wi-Fi dashboard
+      </span>
+    </div>
 
+    <div class="browser-warn" id="browserWarn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <div>
+        <strong>Chrome, Edge, or Opera required.</strong>
+        Web Serial isn't supported in Firefox or Safari. Open this page in a Chromium-based browser on desktop.
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ─── Firmware cards ─────────────────────────────────────────────────── -->
+<section class="section" id="flash">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="section-label">01 · Install</div>
+        <h2 class="section-title">Pick your <span class="serif-i">firmware.</span></h2>
+      </div>
+      <p class="section-desc">Each build is signed and shipped via GitHub Actions. Click install on the variant that matches your board.</p>
+    </div>
+
+    <div class="cards" id="cards">
+      <!-- skeletons -->
+      <div class="card"><div class="card-head"><div class="skeleton sk-icon"></div><div class="skeleton" style="height:20px;width:54px;border-radius:999px"></div></div><div class="card-body"><div class="skeleton sk-title"></div><div class="skeleton sk-desc"></div></div><div class="skeleton sk-btn"></div></div>
+      <div class="card"><div class="card-head"><div class="skeleton sk-icon"></div><div class="skeleton" style="height:20px;width:54px;border-radius:999px"></div></div><div class="card-body"><div class="skeleton sk-title"></div><div class="skeleton sk-desc"></div></div><div class="skeleton sk-btn"></div></div>
+      <div class="card"><div class="card-head"><div class="skeleton sk-icon"></div><div class="skeleton" style="height:20px;width:54px;border-radius:999px"></div></div><div class="card-body"><div class="skeleton sk-title"></div><div class="skeleton sk-desc"></div></div><div class="skeleton sk-btn"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── How it works ───────────────────────────────────────────────────── -->
+<section class="section" id="how">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="section-label">02 · How it works</div>
+        <h2 class="section-title">Plug in, click, <span class="serif-i">connect.</span></h2>
+      </div>
+      <p class="section-desc">Four steps from a blank ESP32 to a running transceiver with its Wi-Fi dashboard up.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num"><span class="n">01</span> · Plug in</div>
+        <h3 class="step-title">Connect USB</h3>
+        <p class="step-desc">Plug your ESP32 into your computer with a USB-C data cable.</p>
+      </div>
+      <div class="step">
+        <div class="step-num"><span class="n">02</span> · Choose</div>
+        <h3 class="step-title">Pick a firmware</h3>
+        <p class="step-desc">Click <strong>Install</strong> on the TX, RX, or RX&nbsp;Lite card that matches your board.</p>
+      </div>
+      <div class="step">
+        <div class="step-num"><span class="n">03</span> · Flash</div>
+        <h3 class="step-title">Select the port</h3>
+        <p class="step-desc">Choose the serial port in the browser dialog. The chip is erased and the firmware + dashboard written.</p>
+      </div>
+      <div class="step">
+        <div class="step-num"><span class="n">04</span> · Connect</div>
+        <h3 class="step-title">Join the Wi-Fi</h3>
+        <p class="step-desc">Connect to <code>Snow Transceiver</code> (password <code>1234567890</code>) and open <code>192.168.4.1</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Requirements ───────────────────────────────────────────────────── -->
+<section class="section" id="reqs">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="section-label">03 · Requirements</div>
+        <h2 class="section-title">What you <span class="serif-i">need.</span></h2>
+      </div>
+      <p class="section-desc">Anything that speaks Web Serial — most modern Chromium browsers on desktop will do.</p>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-item-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          Hardware
+        </div>
+        <p class="info-item-title">uPesy ESP32 WROOM 32E</p>
+        <p class="info-item-desc">Or any ESP32 with 4 MB of flash. A USB-C data cable connected to your computer.</p>
+      </div>
+      <div class="info-item">
+        <div class="info-item-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Browser
+        </div>
+        <p class="info-item-title">Chrome, Edge, or Opera</p>
+        <p class="info-item-desc">Web Serial isn't supported in Firefox or Safari — use a Chromium-based browser on desktop.</p>
+      </div>
+      <div class="info-item">
+        <div class="info-item-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Drivers
+        </div>
+        <p class="info-item-title">CP2102 or CH340</p>
+        <p class="info-item-desc">Most systems pick these up automatically. If your port doesn't appear, install the driver for your board.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Troubleshooting ────────────────────────────────────────────────── -->
+<section class="section" id="trouble">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="section-label">04 · Troubleshooting</div>
+        <h2 class="section-title">When things <span class="serif-i">stall.</span></h2>
+      </div>
+      <p class="section-desc">The usual suspects, and how to get past them.</p>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <p class="info-item-title">Install button is greyed out</p>
+        <p class="info-item-desc">Switch to Chrome, Edge, or Opera on desktop. Web Serial isn't available in mobile or Safari/Firefox.</p>
+      </div>
+      <div class="info-item">
+        <p class="info-item-title">No serial port appears</p>
+        <p class="info-item-desc">Install the <strong>CP2102</strong> or <strong>CH340</strong> USB driver for your board, then reload this page.</p>
+      </div>
+      <div class="info-item">
+        <p class="info-item-title">Stuck at "connecting"</p>
+        <p class="info-item-desc">Hold <kbd>BOOT</kbd> on the board, click install, release once it starts erasing.</p>
+      </div>
+      <div class="info-item">
+        <p class="info-item-title">Dashboard doesn't load after flash</p>
+        <p class="info-item-desc">The LittleFS image was included with the firmware — try a hard power cycle and reconnect to the Wi-Fi.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Footer ─────────────────────────────────────────────────────────── -->
+<footer>
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="2" x2="12" y2="22"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/>
+          <line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/>
+        </svg>
+      </span>
+      <span>Snow Transceiver — Web Flasher</span>
+    </div>
+    <div class="footer-meta">
+      <span>Powered by <a href="https://esphome.github.io/esp-web-tools/" rel="noopener">ESP Web Tools</a> · <a href="https://github.com/Lorenzo-x64/Snow-Esp-Flasher.github.io" rel="noopener">GitHub</a></span>
+      <span id="buildInfo">·</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ─── Scripts ────────────────────────────────────────────────────────── -->
 <script type="module">
-// ── Theme toggle ─────────────────────────────────────────────────────────────
+/* ─── Theme toggle ─────────────────────────────────────────────────────── */
 (function () {
-  const root   = document.documentElement;
-  const btn    = document.getElementById('themeToggle');
-  const order  = ['auto', 'light', 'dark'];
-  const labels = { auto: '☀︎ Auto', light: '☀︎ Light', dark: '☾ Dark' };
+  const root  = document.documentElement;
+  const btn   = document.getElementById('themeToggle');
+  const icon  = document.getElementById('themeIcon');
+  const label = document.getElementById('themeLabel');
+  const order = ['auto', 'light', 'dark'];
+  const ICONS = {
+    auto:  '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
+    light: '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+    dark:  '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+  };
+  const LABELS = { auto:'Auto', light:'Light', dark:'Dark' };
 
   function apply(mode) {
     if (mode === 'auto') root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', mode);
-    btn.textContent = labels[mode];
+    icon.innerHTML = ICONS[mode];
+    label.textContent = LABELS[mode];
     localStorage.setItem('theme', mode);
   }
   apply(localStorage.getItem('theme') || 'auto');
@@ -331,19 +875,112 @@
   });
 })();
 
-// ── Browser support check ────────────────────────────────────────────────────
+/* ─── Nav scroll state ─────────────────────────────────────────────────── */
+(function () {
+  const nav = document.getElementById('nav');
+  const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 8);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+
+/* ─── Web Serial check ─────────────────────────────────────────────────── */
 if (!('serial' in navigator)) {
   document.getElementById('browserWarn').classList.add('visible');
 }
 
-// ── Card config ──────────────────────────────────────────────────────────────
+/* ─── Subtle snow particles (canvas, low cost) ─────────────────────────── */
+(function () {
+  const canvas = document.getElementById('snow');
+  const ctx = canvas.getContext('2d');
+  let w, h, flakes;
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const COUNT = window.matchMedia('(max-width:640px)').matches ? 18 : 36;
+
+  function resize() {
+    w = canvas.width  = innerWidth  * DPR;
+    h = canvas.height = innerHeight * DPR;
+    canvas.style.width  = innerWidth  + 'px';
+    canvas.style.height = innerHeight + 'px';
+  }
+  function reset(f) {
+    f.x = Math.random() * w;
+    f.y = Math.random() * h - h;
+    f.r = (Math.random() * 1.6 + 0.5) * DPR;
+    f.vy = (Math.random() * 0.5 + 0.25) * DPR;
+    f.vx = (Math.random() - 0.5) * 0.3 * DPR;
+    f.o = Math.random() * 0.6 + 0.2;
+  }
+  function init() {
+    resize();
+    flakes = Array.from({ length: COUNT }, () => { const f = {}; reset(f); return f; });
+  }
+  function loop() {
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#fff';
+    for (const f of flakes) {
+      f.y += f.vy;
+      f.x += f.vx;
+      if (f.y > h + 8) reset(f), f.y = -8;
+      if (f.x < -8) f.x = w + 8;
+      if (f.x > w + 8) f.x = -8;
+      ctx.globalAlpha = f.o;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(loop);
+  }
+  init();
+  window.addEventListener('resize', init);
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) loop();
+})();
+
+/* ─── Firmware card config ─────────────────────────────────────────────── */
 const CARD_META = {
-  tx:      { icon: '📡', iconClass: 'icon-tx'   },
-  rx:      { icon: '📻', iconClass: 'icon-rx'   },
-  rx_mini: { icon: '🔹', iconClass: 'icon-mini' },
+  tx: {
+    iconClass: 'icon-tx',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>'
+  },
+  rx: {
+    iconClass: 'icon-rx',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16h20"/><path d="M5 10l7-7 7 7"/><circle cx="6" cy="19" r="1.5"/><circle cx="12" cy="19" r="1.5"/><circle cx="18" cy="19" r="1.5"/></svg>'
+  },
+  rx_mini: {
+    iconClass: 'icon-mini',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="16" height="12" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>'
+  }
 };
 
-// ── Load releases.json and render cards ──────────────────────────────────────
+/* ─── Fallback content (if releases.json missing) ─────────────────────── */
+const FALLBACK = {
+  generated_at: null,
+  variants: {
+    tx: {
+      label: "TX — Transmitter",
+      description: "Sends snow-depth readings from the sensor module over LoRa to your receiver.",
+      version: "0.12.9",
+      manifest: "manifest.json",
+      available: true
+    },
+    rx: {
+      label: "RX Full — Receiver",
+      description: "Full-featured receiver with Wi-Fi dashboard, logging, and OTA updates.",
+      version: "0.12.9",
+      manifest: "manifest.json",
+      available: true
+    },
+    rx_mini: {
+      label: "RX Lite — Minimal",
+      description: "Stripped-down receiver for low-memory boards. Dashboard only, no logging.",
+      version: "0.12.9",
+      manifest: "manifest.json",
+      available: false
+    }
+  }
+};
+
+/* ─── Load releases.json and render cards ──────────────────────────────── */
 async function loadCards() {
   let data;
   try {
@@ -351,19 +988,16 @@ async function loadCards() {
     if (!resp.ok) throw new Error('releases.json not found');
     data = await resp.json();
   } catch (e) {
-    document.getElementById('cards').innerHTML =
-      `<p style="color:var(--muted);font-size:14px">
-         Could not load release info. The first CI run may still be in progress.
-         <a href="https://github.com/Lorenzo-x64/Snow-Depth-Sensor/actions" rel="noopener">Check Actions →</a>
-       </p>`;
-    return;
+    // Fall back to local manifest so the page still works
+    data = FALLBACK;
   }
 
-  // Build info in footer
   if (data.generated_at) {
     const d = new Date(data.generated_at);
     document.getElementById('buildInfo').textContent =
       'Updated ' + d.toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' });
+  } else {
+    document.getElementById('buildInfo').textContent = 'v0.12.9 · preview build';
   }
 
   const variants = data.variants;
@@ -380,49 +1014,41 @@ async function loadCards() {
     card.className = 'card' + (v.available ? '' : ' unavailable');
 
     if (v.available) {
-      // Available — show install button
       card.innerHTML = `
-        <div class="card-header">
-          <span class="card-icon ${meta.iconClass}">${meta.icon}</span>
-          <span class="version-badge badge-available">v${v.version}</span>
+        <div class="card-head">
+          <span class="card-icon ${meta.iconClass}" aria-hidden="true">${meta.icon}</span>
+          <span class="version-badge available"><span class="dot"></span>v${v.version}</span>
         </div>
-        <div>
+        <div class="card-body">
           <p class="card-title">${v.label}</p>
           <p class="card-desc">${v.description}</p>
         </div>
         <div class="install-slot">
           <esp-web-install-button manifest="./${v.manifest}">
             <button slot="activate" class="btn-install">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" stroke-width="2.2"
-                   stroke-linecap="round" stroke-linejoin="round">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-              Install
+              Install firmware
             </button>
-            <span slot="unsupported" style="font-size:12px;color:var(--muted)">
-              Use Chrome / Edge / Opera
-            </span>
+            <span slot="unsupported" class="unsupported-msg">Use Chrome, Edge, or Opera on desktop.</span>
           </esp-web-install-button>
         </div>`;
     } else {
-      // Not yet released
       card.innerHTML = `
-        <div class="card-header">
-          <span class="card-icon ${meta.iconClass}">${meta.icon}</span>
-          <span class="version-badge badge-soon">Coming soon</span>
+        <div class="card-head">
+          <span class="card-icon ${meta.iconClass}" aria-hidden="true">${meta.icon}</span>
+          <span class="version-badge soon">Coming soon</span>
         </div>
-        <div>
+        <div class="card-body">
           <p class="card-title">${v.label}</p>
           <p class="card-desc">${v.description}</p>
         </div>
         <div class="install-slot">
           <div class="btn-soon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="10"/>
               <polyline points="12 6 12 12 16 14"/>
             </svg>
