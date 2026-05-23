@@ -1,19 +1,19 @@
 name: Deploy web flasher
 
-# Generates releases.json + per-variant manifests by querying the GitHub API
-# for the Snow-Depth-Sensor repo. Pure Python — no fragile bash, no auth needed
-# since the source repo is public.
+# Fetches release info from the Snow-Depth-Sensor repo, downloads the .bin
+# files locally, and serves everything from GitHub Pages (same origin → no
+# CORS issues when ESP Web Tools fetches the bins).
 #
 # Triggers:
 #   • push to main           (after edits to the flasher repo)
-#   • schedule (every 6 h)   (auto-catches new releases without manual action)
+#   • schedule (every 6 h)   (auto-catches new releases)
 #   • workflow_dispatch      (manual button in the Actions tab)
 
 on:
   push:
     branches: [main]
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -39,17 +39,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate releases.json and manifests
+      - name: Fetch releases, download bins, generate manifests
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 <<'PYEOF'
-          import json, os, sys, urllib.request, urllib.error
+          import json, os, urllib.request, urllib.error
           from datetime import datetime, timezone
 
           SOURCE_REPO  = os.environ['SOURCE_REPO']
           GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
-          BASE_URL    = f"https://github.com/{SOURCE_REPO}/releases/download"
 
           VARIANTS = {
               'tx': {
@@ -72,30 +71,23 @@ jobs:
               },
           }
 
-          # Flash offsets for ESP32 default partition table (4 MB flash)
-          PARTS_TEMPLATE = [
-              ('bootloader.bin', 4096),
-              ('partitions.bin', 32768),
-              ('boot_app0.bin',  57344),
-              ('firmware.bin',   65536),
-              ('littlefs.bin',   2686976),
-          ]
+          BIN_FILES = ['bootloader.bin', 'partitions.bin', 'boot_app0.bin',
+                       'firmware.bin', 'littlefs.bin']
+          OFFSETS   = [4096, 32768, 57344, 65536, 2686976]
 
-          def check_release(tag: str) -> str | None:
-              """Return tag_name if the release exists, else None."""
-              url = f"https://api.github.com/repos/{SOURCE_REPO}/releases/tags/{tag}"
-              headers = {
-                  'Accept':     'application/vnd.github+json',
-                  'User-Agent': 'snow-flasher-ci',
-              }
+          def gh_headers():
+              h = {'Accept': 'application/vnd.github+json',
+                   'User-Agent': 'snow-flasher-ci'}
               if GITHUB_TOKEN:
-                  headers['Authorization'] = f'Bearer {GITHUB_TOKEN}'
-              req = urllib.request.Request(url, headers=headers)
+                  h['Authorization'] = f'Bearer {GITHUB_TOKEN}'
+              return h
+
+          def get_release(tag):
+              url = f"https://api.github.com/repos/{SOURCE_REPO}/releases/tags/{tag}"
               try:
-                  with urllib.request.urlopen(req, timeout=10) as r:
-                      data = json.loads(r.read())
-                      print(f"  [{tag}] found: {data.get('tag_name')}")
-                      return data.get('tag_name', tag)
+                  req = urllib.request.Request(url, headers=gh_headers())
+                  with urllib.request.urlopen(req, timeout=15) as r:
+                      return json.loads(r.read())
               except urllib.error.HTTPError as e:
                   print(f"  [{tag}] not found (HTTP {e.code})")
                   return None
@@ -103,7 +95,17 @@ jobs:
                   print(f"  [{tag}] error: {e}")
                   return None
 
-          os.makedirs('docs', exist_ok=True)
+          def download(url, dest):
+              # Need raw octet-stream + auth to download release assets via API
+              req = urllib.request.Request(url, headers={
+                  'Accept': 'application/octet-stream',
+                  'User-Agent': 'snow-flasher-ci',
+                  'Authorization': f'Bearer {GITHUB_TOKEN}',
+              })
+              with urllib.request.urlopen(req, timeout=60) as r, open(dest, 'wb') as f:
+                  f.write(r.read())
+
+          os.makedirs('docs/firmware', exist_ok=True)
 
           releases = {
               'generated_at': datetime.now(timezone.utc).isoformat(),
@@ -111,54 +113,75 @@ jobs:
               'variants':     {},
           }
 
-          print(f"Checking releases in {SOURCE_REPO}...")
           for key, info in VARIANTS.items():
-              version   = check_release(info['tag'])
-              available = version is not None
+              tag = info['tag']
+              print(f"\n=== {tag} ===")
+              release = get_release(tag)
+              available = release is not None
+              version = release.get('name') or release.get('tag_name') if release else 'unreleased'
               manifest_file = f"manifest-{key.replace('_', '-')}.json"
 
               releases['variants'][key] = {
                   'label':       info['label'],
                   'description': info['description'],
-                  'tag':         info['tag'],
-                  'version':     version or 'unreleased',
+                  'tag':         tag,
+                  'version':     version,
                   'available':   available,
                   'manifest':    manifest_file,
               }
 
-              if available:
-                  base = f"{BASE_URL}/{info['tag']}"
-                  manifest = {
-                      'name':                     f"Snow Transceiver — {info['label']}",
-                      'version':                  version,
-                      'home_assistant_domain':    '',
-                      'new_install_prompt_erase': True,
-                      'builds': [{
-                          'chipFamily': 'ESP32',
-                          'parts': [
-                              {'path': f"{base}/{name}", 'offset': offset}
-                              for name, offset in PARTS_TEMPLATE
-                          ],
-                      }],
-                  }
-                  with open(f"docs/{manifest_file}", 'w') as f:
-                      json.dump(manifest, f, indent=2)
-                  print(f"  → wrote docs/{manifest_file}")
+              if not available:
+                  continue
+
+              # Map asset name → API download URL (api.github.com supports CORS)
+              assets = {a['name']: a['url'] for a in release.get('assets', [])}
+              missing = [b for b in BIN_FILES if b not in assets]
+              if missing:
+                  print(f"  ⚠ missing assets: {missing} — skipping {tag}")
+                  releases['variants'][key]['available'] = False
+                  continue
+
+              # Download all 5 bins into docs/firmware/<key>/
+              variant_dir = f"docs/firmware/{key}"
+              os.makedirs(variant_dir, exist_ok=True)
+              for name in BIN_FILES:
+                  dest = f"{variant_dir}/{name}"
+                  print(f"  ↓ {name}", end='', flush=True)
+                  download(assets[name], dest)
+                  print(f"  ({os.path.getsize(dest):,} bytes)")
+
+              # Write manifest pointing to the locally-served copies
+              manifest = {
+                  'name':                     f"Snow Transceiver — {info['label']}",
+                  'version':                  version,
+                  'home_assistant_domain':    '',
+                  'new_install_prompt_erase': True,
+                  'builds': [{
+                      'chipFamily': 'ESP32',
+                      'parts': [
+                          {'path': f"firmware/{key}/{name}", 'offset': off}
+                          for name, off in zip(BIN_FILES, OFFSETS)
+                      ],
+                  }],
+              }
+              with open(f"docs/{manifest_file}", 'w') as f:
+                  json.dump(manifest, f, indent=2)
+              print(f"  ✓ wrote docs/{manifest_file}")
 
           with open('docs/releases.json', 'w') as f:
               json.dump(releases, f, indent=2)
-          print("\n→ wrote docs/releases.json")
+          print(f"\n✓ wrote docs/releases.json")
 
           available = [k for k, v in releases['variants'].items() if v['available']]
-          print(f"\nAvailable variants: {available or '(none)'}")
+          print(f"Available variants: {available or '(none)'}")
           PYEOF
 
-      - name: List docs/ contents
+      - name: List output
         run: |
-          echo "Final docs/ folder:"
-          ls -lah docs/
+          echo "=== docs/ tree ==="
+          find docs -type f | sort
           echo ""
-          echo "── releases.json ──"
+          echo "=== docs/releases.json ==="
           cat docs/releases.json
 
       - name: Disable Jekyll
