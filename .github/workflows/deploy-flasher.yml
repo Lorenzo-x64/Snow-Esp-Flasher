@@ -22,6 +22,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 concurrency:
   group: pages
@@ -46,32 +47,36 @@ jobs:
         uses: actions/checkout@v4
 
       # ── Fetch release info for each variant ──────────────────────────────
+      # Uses the public GitHub API via curl — no auth needed for public repos.
       - name: Fetch release metadata
         id: releases
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
           fetch_release() {
             local tag="$1"
             local key="$2"
+            local url="https://api.github.com/repos/${REPO}/releases/tags/${tag}"
+            local http_code
             local json
-            json=$(gh api "repos/${REPO}/releases/tags/${tag}" 2>/dev/null || echo "null")
-            if [ "$json" = "null" ] || [ -z "$json" ]; then
-              echo "${key}_available=false" >> "$GITHUB_OUTPUT"
-              echo "${key}_version=unreleased"  >> "$GITHUB_OUTPUT"
-              echo "  [$tag] not found — will show Coming Soon"
+
+            json=$(curl -s -w "%{http_code}" -o /tmp/release_resp.json "$url")
+            http_code=$(tail -c 3 <<< "$json")
+
+            if [ "$http_code" != "200" ]; then
+              echo "${key}_available=false"    >> "$GITHUB_OUTPUT"
+              echo "${key}_version=unreleased" >> "$GITHUB_OUTPUT"
+              echo "  [$tag] not found (HTTP $http_code) — will show Coming Soon"
             else
               local version
-              version=$(echo "$json" | python3 -c "import sys,json; r=json.load(sys.stdin); print(r.get('tag_name','unknown'))")
-              echo "${key}_available=true"      >> "$GITHUB_OUTPUT"
-              echo "${key}_version=${version}"  >> "$GITHUB_OUTPUT"
+              version=$(python3 -c "import sys,json; r=json.load(open('/tmp/release_resp.json')); print(r.get('tag_name','unknown'))")
+              echo "${key}_available=true"     >> "$GITHUB_OUTPUT"
+              echo "${key}_version=${version}" >> "$GITHUB_OUTPUT"
               echo "  [$tag] found — version: $version"
             fi
           }
 
-          echo "Checking releases..."
+          echo "Checking releases in ${REPO}..."
           fetch_release "$TAG_TX"      "tx"
           fetch_release "$TAG_RX"      "rx"
           fetch_release "$TAG_RX_MINI" "rx_mini"
