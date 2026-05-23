@@ -1,42 +1,35 @@
 name: Deploy web flasher
 
-# Fetches metadata from the 3 GitHub Releases (TX / RX / RX-Mini), writes
-# manifests that point directly at the release .bin files, and deploys the
-# docs/ folder to GitHub Pages.
-#
-# No build step — the .bin files live in your releases, not compiled here.
+# Generates releases.json + per-variant manifests by querying the GitHub API
+# for the Snow-Depth-Sensor repo. Pure Python — no fragile bash, no auth needed
+# since the source repo is public.
 #
 # Triggers:
-#   • Every push to main (keeps the flasher in sync)
-#   • When any release is published (instant update after a new firmware drop)
-#   • Manual trigger from the Actions tab
+#   • push to main           (after edits to the flasher repo)
+#   • schedule (every 6 h)   (auto-catches new releases without manual action)
+#   • workflow_dispatch      (manual button in the Actions tab)
 
 on:
   push:
     branches: [main]
-  release:
-    types: [published]
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
   workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
-  actions: read
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 env:
-  REPO: Lorenzo-x64/Snow-Depth-Sensor
-  TAG_TX:      Snow_TX_BIN
-  TAG_RX:      Snow_RX_BIN
-  TAG_RX_MINI: Snow_RX_MINI_BIN
+  SOURCE_REPO: Lorenzo-x64/Snow-Depth-Sensor
 
 jobs:
-  generate-and-deploy:
-    name: Generate manifests & deploy
+  deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -46,172 +39,127 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Fetch release info for each variant ──────────────────────────────
-      # Uses the public GitHub API via curl — no auth needed for public repos.
-      - name: Fetch release metadata
-        id: releases
-        run: |
-          set -euo pipefail
-
-          fetch_release() {
-            local tag="$1"
-            local key="$2"
-            local url="https://api.github.com/repos/${REPO}/releases/tags/${tag}"
-            local http_code
-            local json
-
-            json=$(curl -s -w "%{http_code}" -o /tmp/release_resp.json "$url")
-            http_code=$(tail -c 3 <<< "$json")
-
-            if [ "$http_code" != "200" ]; then
-              echo "${key}_available=false"    >> "$GITHUB_OUTPUT"
-              echo "${key}_version=unreleased" >> "$GITHUB_OUTPUT"
-              echo "  [$tag] not found (HTTP $http_code) — will show Coming Soon"
-            else
-              local version
-              version=$(python3 -c "import sys,json; r=json.load(open('/tmp/release_resp.json')); print(r.get('tag_name','unknown'))")
-              echo "${key}_available=true"     >> "$GITHUB_OUTPUT"
-              echo "${key}_version=${version}" >> "$GITHUB_OUTPUT"
-              echo "  [$tag] found — version: $version"
-            fi
-          }
-
-          echo "Checking releases in ${REPO}..."
-          fetch_release "$TAG_TX"      "tx"
-          fetch_release "$TAG_RX"      "rx"
-          fetch_release "$TAG_RX_MINI" "rx_mini"
-
-      # ── Write releases.json (read by the landing page at runtime) ─────────
-      - name: Write releases.json
-        run: |
-          BUILT_AT=$(date -u +%FT%TZ)
-          BASE="https://github.com/${REPO}/releases/download"
-
-          python3 - <<PYEOF
-          import json, os
-
-          base = os.environ['BASE']
-          tags = {
-            "tx":      os.environ['TAG_TX'],
-            "rx":      os.environ['TAG_RX'],
-            "rx_mini": os.environ['TAG_RX_MINI'],
-          }
-          avail = {
-            "tx":      "${{ steps.releases.outputs.tx_available }}"      == "true",
-            "rx":      "${{ steps.releases.outputs.rx_available }}"      == "true",
-            "rx_mini": "${{ steps.releases.outputs.rx_mini_available }}" == "true",
-          }
-          versions = {
-            "tx":      "${{ steps.releases.outputs.tx_version }}",
-            "rx":      "${{ steps.releases.outputs.rx_version }}",
-            "rx_mini": "${{ steps.releases.outputs.rx_mini_version }}",
-          }
-
-          out = {
-            "generated_at": "${BUILT_AT}",
-            "variants": {
-              "tx": {
-                "label":       "Transmitter — Full",
-                "description": "Full transmitter node with onboard dashboard. Reads the sensor and broadcasts data over LoRa.",
-                "tag":         tags["tx"],
-                "version":     versions["tx"],
-                "available":   avail["tx"],
-                "manifest":    "manifest-tx.json"
-              },
-              "rx": {
-                "label":       "Receiver — Full",
-                "description": "Full receiver node with onboard dashboard. Receives LoRa packets and displays snow depth.",
-                "tag":         tags["rx"],
-                "version":     versions["rx"],
-                "available":   avail["rx"],
-                "manifest":    "manifest-rx.json"
-              },
-              "rx_mini": {
-                "label":       "Receiver — Lite",
-                "description": "Minimal receiver firmware. Lower memory footprint, no dashboard.",
-                "tag":         tags["rx_mini"],
-                "version":     versions["rx_mini"],
-                "available":   avail["rx_mini"],
-                "manifest":    "manifest-rx-mini.json"
-              }
-            }
-          }
-
-          os.makedirs("docs", exist_ok=True)
-          with open("docs/releases.json", "w") as f:
-            json.dump(out, f, indent=2)
-          print("Wrote docs/releases.json")
-          PYEOF
+      - name: Generate releases.json and manifests
         env:
-          BASE: "https://github.com/${{ env.REPO }}/releases/download"
-
-      # ── Write one manifest per available variant ──────────────────────────
-      - name: Write manifests
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          BASE="https://github.com/${REPO}/releases/download"
+          python3 <<'PYEOF'
+          import json, os, sys, urllib.request, urllib.error
+          from datetime import datetime, timezone
 
-          write_manifest() {
-            local available="$1"
-            local tag="$2"
-            local version="$3"
-            local label="$4"
-            local out_file="$5"
+          SOURCE_REPO  = os.environ['SOURCE_REPO']
+          GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
+          BASE_URL    = f"https://github.com/{SOURCE_REPO}/releases/download"
 
-            if [ "$available" != "true" ]; then
-              echo "  Skipping $out_file (release not found)"
-              return
-            fi
+          VARIANTS = {
+              'tx': {
+                  'tag':         'Snow_TX_BIN',
+                  'label':       'Transmitter — Full',
+                  'description': 'Full transmitter node with onboard dashboard. '
+                                 'Reads the sensor and broadcasts data over LoRa.',
+              },
+              'rx': {
+                  'tag':         'Snow_RX_BIN',
+                  'label':       'Receiver — Full',
+                  'description': 'Full receiver node with onboard dashboard. '
+                                 'Receives LoRa packets and displays snow depth.',
+              },
+              'rx_mini': {
+                  'tag':         'Snow_RX_MINI_BIN',
+                  'label':       'Receiver — Lite',
+                  'description': 'Minimal receiver firmware. Lower memory '
+                                 'footprint, no dashboard.',
+              },
+          }
 
-            python3 - <<PYEOF
-          import json
-
-          base  = "${BASE}/${tag}"
-          parts = [
-            {"path": f"{base}/bootloader.bin",  "offset": 4096    },
-            {"path": f"{base}/partitions.bin",   "offset": 32768   },
-            {"path": f"{base}/boot_app0.bin",    "offset": 57344   },
-            {"path": f"{base}/firmware.bin",     "offset": 65536   },
-            {"path": f"{base}/littlefs.bin",     "offset": 2686976 },
+          # Flash offsets for ESP32 default partition table (4 MB flash)
+          PARTS_TEMPLATE = [
+              ('bootloader.bin', 4096),
+              ('partitions.bin', 32768),
+              ('boot_app0.bin',  57344),
+              ('firmware.bin',   65536),
+              ('littlefs.bin',   2686976),
           ]
 
-          manifest = {
-            "name":                    "Snow Transceiver — ${label}",
-            "version":                 "${version}",
-            "home_assistant_domain":   "",
-            "new_install_prompt_erase": True,
-            "builds": [{"chipFamily": "ESP32", "parts": parts}]
+          def check_release(tag: str) -> str | None:
+              """Return tag_name if the release exists, else None."""
+              url = f"https://api.github.com/repos/{SOURCE_REPO}/releases/tags/{tag}"
+              headers = {
+                  'Accept':     'application/vnd.github+json',
+                  'User-Agent': 'snow-flasher-ci',
+              }
+              if GITHUB_TOKEN:
+                  headers['Authorization'] = f'Bearer {GITHUB_TOKEN}'
+              req = urllib.request.Request(url, headers=headers)
+              try:
+                  with urllib.request.urlopen(req, timeout=10) as r:
+                      data = json.loads(r.read())
+                      print(f"  [{tag}] found: {data.get('tag_name')}")
+                      return data.get('tag_name', tag)
+              except urllib.error.HTTPError as e:
+                  print(f"  [{tag}] not found (HTTP {e.code})")
+                  return None
+              except Exception as e:
+                  print(f"  [{tag}] error: {e}")
+                  return None
+
+          os.makedirs('docs', exist_ok=True)
+
+          releases = {
+              'generated_at': datetime.now(timezone.utc).isoformat(),
+              'source_repo':  SOURCE_REPO,
+              'variants':     {},
           }
 
-          with open("docs/${out_file}", "w") as f:
-            json.dump(manifest, f, indent=2)
-          print(f"Wrote docs/${out_file}")
+          print(f"Checking releases in {SOURCE_REPO}...")
+          for key, info in VARIANTS.items():
+              version   = check_release(info['tag'])
+              available = version is not None
+              manifest_file = f"manifest-{key.replace('_', '-')}.json"
+
+              releases['variants'][key] = {
+                  'label':       info['label'],
+                  'description': info['description'],
+                  'tag':         info['tag'],
+                  'version':     version or 'unreleased',
+                  'available':   available,
+                  'manifest':    manifest_file,
+              }
+
+              if available:
+                  base = f"{BASE_URL}/{info['tag']}"
+                  manifest = {
+                      'name':                     f"Snow Transceiver — {info['label']}",
+                      'version':                  version,
+                      'home_assistant_domain':    '',
+                      'new_install_prompt_erase': True,
+                      'builds': [{
+                          'chipFamily': 'ESP32',
+                          'parts': [
+                              {'path': f"{base}/{name}", 'offset': offset}
+                              for name, offset in PARTS_TEMPLATE
+                          ],
+                      }],
+                  }
+                  with open(f"docs/{manifest_file}", 'w') as f:
+                      json.dump(manifest, f, indent=2)
+                  print(f"  → wrote docs/{manifest_file}")
+
+          with open('docs/releases.json', 'w') as f:
+              json.dump(releases, f, indent=2)
+          print("\n→ wrote docs/releases.json")
+
+          available = [k for k, v in releases['variants'].items() if v['available']]
+          print(f"\nAvailable variants: {available or '(none)'}")
           PYEOF
-          }
 
-          write_manifest \
-            "${{ steps.releases.outputs.tx_available }}" \
-            "$TAG_TX" \
-            "${{ steps.releases.outputs.tx_version }}" \
-            "Transmitter Full" \
-            "manifest-tx.json"
-
-          write_manifest \
-            "${{ steps.releases.outputs.rx_available }}" \
-            "$TAG_RX" \
-            "${{ steps.releases.outputs.rx_version }}" \
-            "Receiver Full" \
-            "manifest-rx.json"
-
-          write_manifest \
-            "${{ steps.releases.outputs.rx_mini_available }}" \
-            "$TAG_RX_MINI" \
-            "${{ steps.releases.outputs.rx_mini_version }}" \
-            "Receiver Lite" \
-            "manifest-rx-mini.json"
-
-          echo ""
-          echo "docs/ contents:"
+      - name: List docs/ contents
+        run: |
+          echo "Final docs/ folder:"
           ls -lah docs/
+          echo ""
+          echo "── releases.json ──"
+          cat docs/releases.json
 
       - name: Disable Jekyll
         run: touch docs/.nojekyll
